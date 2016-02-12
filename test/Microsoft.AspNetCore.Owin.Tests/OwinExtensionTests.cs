@@ -36,17 +36,20 @@ namespace Microsoft.AspNetCore.Owin
             var builder = build.UseBuilder(applicationBuilder =>
             {
                 serviceProvider = applicationBuilder.ApplicationServices;
-                applicationBuilder.Run(async context =>
+                applicationBuilder.Run(context =>
                 {
                     fakeService = context.RequestServices.GetService<FakeService>();
+                    return Task.FromResult(0);
                 });
-            }, new ServiceCollection().AddSingleton(new FakeService()).BuildServiceProvider());
+            },
+            new ServiceCollection().AddSingleton(new FakeService()).BuildServiceProvider());
 
             list.Reverse();
             list.Aggregate(notFound, (next, middleware) => middleware(next)).Invoke(new Dictionary<string, object>());
 
-            Assert.NotNull(fakeService);
+            Assert.NotNull(serviceProvider);
             Assert.NotNull(serviceProvider.GetService<FakeService>());
+            Assert.NotNull(fakeService);
         }
 
         [Fact]
@@ -54,6 +57,7 @@ namespace Microsoft.AspNetCore.Owin
         {
             var list = new List<CreateMiddleware>();
             AddMiddleware build = list.Add;
+            IServiceProvider expectedServiceProvider = new ServiceCollection().BuildServiceProvider();
             IServiceProvider serviceProvider = null;
             FakeService fakeService = null;
             bool builderExecuted = false;
@@ -63,25 +67,26 @@ namespace Microsoft.AspNetCore.Owin
             {
                 builderExecuted = true;
                 serviceProvider = applicationBuilder.ApplicationServices;
-                applicationBuilder.Run(async context =>
+                applicationBuilder.Run(context =>
                 {
                     applicationExecuted = true;
                     fakeService = context.RequestServices.GetService<FakeService>();
+                    return Task.FromResult(0);
                 });
-            });
+            },
+            expectedServiceProvider);
 
             list.Reverse();
             list.Aggregate(notFound, (next, middleware) => middleware(next)).Invoke(new Dictionary<string, object>());
 
             Assert.True(builderExecuted);
-            Assert.Null(fakeService);
+            Assert.Equal(expectedServiceProvider, serviceProvider);
             Assert.True(applicationExecuted);
-            Assert.Null(serviceProvider);
+            Assert.Null(fakeService);
         }
 
         private class FakeService
         {
-
         }
     }
 }
