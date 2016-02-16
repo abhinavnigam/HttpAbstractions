@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Owin
         static AppFunc notFound = env => new Task(() => { env["owin.ResponseStatusCode"] = 404; });
 
         [Fact]
-        public void OwinConfigureServiceProviderAddsServices()
+        public async Task OwinConfigureServiceProviderAddsServices()
         {
             var list = new List<CreateMiddleware>();
             AddMiddleware build = list.Add;
@@ -45,7 +45,9 @@ namespace Microsoft.AspNetCore.Owin
             new ServiceCollection().AddSingleton(new FakeService()).BuildServiceProvider());
 
             list.Reverse();
-            list.Aggregate(notFound, (next, middleware) => middleware(next)).Invoke(new Dictionary<string, object>());
+            await list
+                .Aggregate(notFound, (next, middleware) => middleware(next))
+                .Invoke(new Dictionary<string, object>());
 
             Assert.NotNull(serviceProvider);
             Assert.NotNull(serviceProvider.GetService<FakeService>());
@@ -53,7 +55,7 @@ namespace Microsoft.AspNetCore.Owin
         }
 
         [Fact]
-        public void OwinDefaultNoServices()
+        public async Task OwinDefaultNoServices()
         {
             var list = new List<CreateMiddleware>();
             AddMiddleware build = list.Add;
@@ -77,7 +79,9 @@ namespace Microsoft.AspNetCore.Owin
             expectedServiceProvider);
 
             list.Reverse();
-            list.Aggregate(notFound, (next, middleware) => middleware(next)).Invoke(new Dictionary<string, object>());
+            await list
+                .Aggregate(notFound, (next, middleware) => middleware(next))
+                .Invoke(new Dictionary<string, object>());
 
             Assert.True(builderExecuted);
             Assert.Equal(expectedServiceProvider, serviceProvider);
