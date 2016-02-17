@@ -9,15 +9,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Internal;
 using Microsoft.AspNetCore.Owin;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.AspNetCore.Builder
 {
-    using AppFunc = Func<IDictionary<string, object>, Task>;
     using AddMiddleware = Action<Func<
           Func<IDictionary<string, object>, Task>,
           Func<IDictionary<string, object>, Task>
         >>;
+    using AppFunc = Func<IDictionary<string, object>, Task>;
     using CreateMiddleware = Func<
           Func<IDictionary<string, object>, Task>,
           Func<IDictionary<string, object>, Task>
@@ -76,13 +75,13 @@ namespace Microsoft.AspNetCore.Builder
                 throw new ArgumentNullException(nameof(pipeline));
             }
 
-            pipeline(UseOwin(builder));
+            pipeline(builder.UseOwin());
             return builder;
         }
 
         public static IApplicationBuilder UseBuilder(this AddMiddleware app)
         {
-            return UseBuilder(app, serviceProvider: null);
+            return app.UseBuilder(serviceProvider: null);
         }
 
         public static IApplicationBuilder UseBuilder(this AddMiddleware app, IServiceProvider serviceProvider)
@@ -96,7 +95,7 @@ namespace Microsoft.AspNetCore.Builder
             // at least that results in a more useful Exception than a NRE.
             if (serviceProvider == null)
             {
-                serviceProvider = new ServiceCollection().BuildServiceProvider();
+                serviceProvider = new EmptyProvider();
             }
 
             // Adapt WebSockets by default.
@@ -147,7 +146,7 @@ namespace Microsoft.AspNetCore.Builder
 
         public static AddMiddleware UseBuilder(this AddMiddleware app, Action<IApplicationBuilder> pipeline)
         {
-            return UseBuilder(app, pipeline, serviceProvider: null);
+            return app.UseBuilder(pipeline, serviceProvider: null);
         }
 
         public static AddMiddleware UseBuilder(this AddMiddleware app, Action<IApplicationBuilder> pipeline, IServiceProvider serviceProvider)
@@ -161,9 +160,17 @@ namespace Microsoft.AspNetCore.Builder
                 throw new ArgumentNullException(nameof(pipeline));
             }
 
-            var builder = UseBuilder(app, serviceProvider);
+            var builder = app.UseBuilder(serviceProvider);
             pipeline(builder);
             return app;
+        }
+
+        private class EmptyProvider : IServiceProvider
+        {
+            public object GetService(Type serviceType)
+            {
+                return null;
+            }
         }
     }
 }
